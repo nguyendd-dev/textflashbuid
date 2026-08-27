@@ -36,7 +36,7 @@ if (isVibeModeOn) {
             println("✅ [VIBE MODE] Đã Add toàn bộ file.")
 
             // 3. Chạy Git Commit
-            val (commitExit, commitOut) = runCommand("git", "commit", "-m", "huhu")
+            val (commitExit, commitOut) = runCommand("git", "commit", "-m", "test commit")
             println("✅ [VIBE MODE] Trạng thái Commit:\n$commitOut")
 
             // 4. Chạy Git Push
