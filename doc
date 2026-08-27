@@ -40,7 +40,7 @@ if (isVibeModeOn) {
             println("✅ [VIBE MODE] Trạng thái Commit:\n$commitOut")
 
             // 4. Chạy Git Push
-      val (pushExit, pushOut) = runCommand("git", "push", "-u", "origin", "HEAD")
+       val (pushExit, pushOut) = runCommand("git", "push", "--all", "origin")
             if (pushExit == 0) {
                 println("🚀 [VIBE MODE] PUSH THÀNH CÔNG LÊN GITHUB!")
             } else {
