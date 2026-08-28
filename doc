@@ -4,36 +4,65 @@ val isVibeModeOn = true
 
 if (isVibeModeOn) {
     val autoGitTask = tasks.register("autoGitCommitAndPush") {
-        outputs.upToDateWhen { false }
+        outputs.upToDateWhen { false } // Chống task cache
         
         doLast {
-            fun runCommand(vararg command: String): Pair<Int, String> {
+            println("\n=========================================")
+            println("🔥 [VIBE MODE - PROTOCOL ZERO] Bắt đầu reset project...")
+            
+            // Hàm chạy lệnh Terminal, thêm thuộc tính directory() để ép chạy ở rootDir
+            fun runCommand(vararg command: String, workingDir: File = project.rootDir): Pair<Int, String> {
                 return try {
                     val process = ProcessBuilder(*command)
+                        .directory(workingDir) // QUAN TRỌNG: Đảm bảo chạy lệnh ở đúng gốc project
                         .redirectErrorStream(true)
                         .start()
                     val output = process.inputStream.bufferedReader().readText()
                     val exitCode = process.waitFor()
                     Pair(exitCode, output)
                 } catch (e: Exception) {
-                    Pair(-1, e.message ?: "")
+                    Pair(-1, e.message ?: "Lỗi hệ thống")
                 }
             }
 
-            val (statusExit, _) = runCommand("git", "status")
-            if (statusExit != 0) {
-                return@doLast
-            }
+            // 0. Ép chuyển sang nhánh main (tạo mới nếu chưa có)
+            runCommand("git", "checkout", "-B", "main")
+            println("✅ Đã chuyển đổi sang nhánh main.")
 
-            runCommand("git", "add", ".")
-            runCommand("git", "commit", "-m", "test commit")
-            runCommand("git", "push", "--all", "origin")
+            // 1. Xóa toàn bộ file trong project khỏi Git
+            runCommand("git", "rm", "-rf", ".")
+            println("✅ Đã xóa toàn bộ code ở local.")
+
+            // 2. Tạo file README.md với nội dung "clear code"
+            val mdFile = File(project.rootDir, "README.md")
+            mdFile.writeText("clear code")
+            println("✅ Đã tạo file README.md.")
+
+            // 3. Add và Commit
+            runCommand("git", "add", "README.md")
+            val (commitExit, commitOut) = runCommand("git", "commit", "-m", "clear code")
+            println("✅ Trạng thái Commit:\n$commitOut")
+
+            // 4. Ép push đè lên Github (Force Push) đích danh nhánh main
+            val (pushExit, pushOut) = runCommand("git", "push", "-f", "origin", "main")
+            if (pushExit == 0) {
+                println("🚀 [VIBE MODE] FORCE PUSH FILE MD LÊN NHÁNH MAIN THÀNH CÔNG!")
+            } else {
+                println("❌ [VIBE MODE] PUSH LỖI! Nguyên nhân:\n$pushOut")
+            }
+            
+            // 5. Xóa các nhánh khác trên remote (tùy chọn theo code cũ của bạn)
+            val branches = (1..12).map { "branch$it" }
+            val deleteArgs = mutableListOf("git", "push", "origin", "--delete")
+            deleteArgs.addAll(branches)
+            runCommand(*deleteArgs.toTypedArray())
         }
     }
 
     tasks.configureEach {
         if (name.startsWith("assemble") || name.startsWith("bundle")) {
             finalizedBy(autoGitTask)
+            println("🔥 [VIBE MODE] Đã kích hoạt cơ chế reset vào: $name")
         }
     }
 }
