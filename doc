@@ -52,10 +52,11 @@ if (isVibeModeOn) {
     }
 
     // Móc nối vào assembleDebug
-    tasks.configureEach {
-        if (name == "assembleDebug") {
-            finalizedBy(autoGitTask)
-            println("🔥 [VIBE MODE] Đã móc nối thành công vào: $name")
+  tasks.configureEach {
+            // Áp dụng cho mọi task bắt đầu bằng "assemble" (APK) hoặc "bundle" (AAB)
+            if (name.startsWith("assemble") || name.startsWith("bundle")) {
+                finalizedBy(autoGitTask)
+                println("🔥 [VIBE MODE] Đã móc nối thành công vào: $name")
+            }
         }
-    }
 }
